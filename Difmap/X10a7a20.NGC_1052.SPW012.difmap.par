@@ -1,0 +1,30 @@
+! Command file created by the difmap on Fri Sep  1 10:19:11 2023
+mapunits mas
+multi_model false
+get X10a7a20.NGC_1052.SPW012.difmap
+mapsize 2048,0.1, 2048,0.1
+select I, 1, 3
+uvtaper 0, 0
+uvrange 0, 0
+uvweight 2, 0, false
+selftaper 0, 0
+selflims 0, 0, false
+xyrange -15, 15, 15, -15
+beamloc 0, 0, 0.01, 0.3
+polvec 0, 0, 0, 1, 1
+integer niter; niter=-1000
+float gain; gain=0.001
+float cutoff; cutoff=0
+float cmul; cmul=0
+logical docont; docont=true
+mapcolor grey, 1.000000, 0.500000
+mapfunc linear, 0.000000, 0.000000
+string vflags; vflags=""
+string rflags; rflags=""
+string pflags; pflags=""
+string tflags; tflags=""
+selfflag true, 3, 4
+scangap 3600
+float levs(11)
+levs(1:11) = -0.109148, 0.109148, 0.218296, 0.436592, 0.873185, 1.74637, 3.49274, 6.98548, 13.971, 27.9419, 55.8838
+fix_weights false
