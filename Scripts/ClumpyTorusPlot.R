@@ -1,56 +1,53 @@
-# library(plotly)
-library(scatterplot3d)
 library(colorRamps)
-num_points <- 8192
-
+num_points <- 4096
+disp3D <- function(df){
+    scalePlot <- 0.25
+    plot(df$X, df$Y, pch=20, cex=df$radius, lwd=0, col=df$colors, asp=1, xlim=c(-scalePlot, scalePlot), ylim=c(-scalePlot, scalePlot), axes=F, xlab="", ylab="")
+}
+incline3D <- function(df, angle){
+    CS <- cospi(angle/180)
+    SN <- sinpi(angle/180)
+    df$X <- df$clumpY
+    df$Y <- df$clumpZ* CS - df$clumpX* SN
+    df$Z <- df$clumpX
+    return(df[order(df$Z),])
+}
 #---- clumpy torus (r, theta, phi)
-r <- 0.2 + rexp(num_points, rate=2)
-# x <- c(r, -r)
+r <- 0.072 + rexp(num_points, rate=15)
 phi <- runif(num_points, min=0, max=2)
 x <- r* cospi(phi)
 y <- r* sinpi(phi)
-z <- rnorm(num_points, mean=0, sd=sqrt(0.5* r^2* exp(-0.5*r^2)))
-# radius <- abs(rnorm(num_points, mean=1, sd=0.25)) / (z^2 + r^2 + 1)
+z <- rnorm(num_points, mean=0, sd=(r-0.054)*exp(-20*(r-0.072)^2))
 cos_theta <- abs(z)/sqrt(r^2 + z^2)
-L <- 250* exp( -0.1* r )
-ClumpPos <- data.frame(clumpX=x, clumpY=y, clumpZ=z, BH = rep(0,num_points), temperature = L * cos_theta / (r^2 + z^2), radius = rnorm(num_points, mean=1, sd=0.1) / (z^2 + r^2 + 10))
-ClumpPos$colors <- paste(blue2green2red(128)[floor(128* ClumpPos$temperature / 3000) + 1], "40", sep="")
-# axisSet <- list(showgrid = F, showline = F, showaxeslabels = F, showbackground = F, nticks = 0, title = '')
-ClumpPos[1,]$clumpX <- 0.0; ClumpPos[1,]$clumpY <- 0.0; ClumpPos[1,]$clumpZ <- 0.0; ClumpPos[1,]$radius <- 0.5; ClumpPos[1,]$temperature <- 2990; ClumpPos[1,]$colors <- "#FF0000FF"
-ClumpBack  <- ClumpPos[((ClumpPos$clumpX <= 0.0) & (abs(ClumpPos$clumpY) < 3) & (abs(ClumpPos$clumpZ) < 3)),]
-ClumpFront <- ClumpPos[((ClumpPos$clumpX >= 0.0) & (abs(ClumpPos$clumpY) < 3) & (abs(ClumpPos$clumpZ) < 3)),]
-
+L <- 20*exp( -2*(r - 0.054) )
+ClumpPos <- data.frame(clumpX=x, clumpY=y, clumpZ=z, BH = rep(0,num_points), temperature = L * (cos_theta + 0.5) / (r^2 + z^2), radius = rnorm(num_points, mean=0.2, sd=0.02) / (z^2 + r^2 + 0.1))
+#-------- Coloring by temperature
+ClumpPos$colors <- paste(blue2green2red(128)[floor(128* ClumpPos$temperature / (max(ClumpPos$temperature) + 5)) + 1], "40", sep="")    # alpha = 40
+ClumpPos[1,]$colors <- "#000000"  # Core component is black
+ClumpPos[1,]$clumpX <- 0.0; ClumpPos[1,]$clumpY <- 0.0; ClumpPos[1,]$clumpZ <- 0.0; ClumpPos[1,]$radius <- 2
+#-------- inclination and projection
+ClumpPos <- incline3D(ClumpPos, 20)
+#-------- Front and Back separation
+ClumpBack  <- ClumpPos[ClumpPos$Z <= 0.0,]
+ClumpFront <- ClumpPos[ClumpPos$Z >= 0.0,]
+rownames(ClumpBack) <- 1:nrow(ClumpBack)
+rownames(ClumpFront) <- 1:nrow(ClumpFront)
+#-------- Plot Front and Back
 pdf("back.pdf")
-scatterplot3d(ClumpBack$clumpX, ClumpBack$clumpY, ClumpBack$clumpZ, box=F, axis=F, grid=F, angle=20, pch=20, cex.symbols=2* ClumpBack$radius, color=ClumpBack$colors)
+disp3D(ClumpBack)
 dev.off()
 pdf("front.pdf")
-scatterplot3d(ClumpFront$clumpX, ClumpFront$clumpY, ClumpFront$clumpZ, box=F, axis=F, grid=F, angle=20, pch=20, cex.symbols=2* ClumpFront$radius, color=ClumpFront$colors)
+disp3D(ClumpFront)
+dev.off()
+#-------- Top view
+ClumpPos <- incline3D(ClumpPos, 90)
+pdf("top.pdf")
+disp3D(ClumpPos)
+dev.off()
+#-------- Cross cut
+ClumpPos <- incline3D(ClumpPos, 0)
+ClumpBack  <- ClumpPos[ClumpPos$Z <= 0.0,]
+pdf("CrossCut.pdf")
+disp3D(ClumpBack)
 dev.off()
 
-#figBack <- plot_ly(ClumpBack, type="scatter3d", mode="markers", x = ~clumpX, y = ~clumpY, z = ~clumpZ, color = ~temperature, size=~radius,
-#    marker=list(symbol='circle', sizemode='diameter', line=list(width=0)), sizes = c(0, 10))
-#figBack <- figBack %>% layout(scene = list(xaxis=list(range=c(-3,3)), yaxis=list(range=c(-3,3)), zaxis=list(range=c(-3,3)), bgcolor="#FFFFFF00", #camera=list(center=list(x=0, y=0, z=0), eye=list(x=1, y=0, z=0.2))))
-
-#orca(figFront, "back.svg")
-#
-#figFront <- plot_ly(ClumpFront, type="scatter3d", mode="markers", x = ~clumpX, y = ~clumpY, z = ~clumpZ, color = ~temperature, size=~radius,
-#    marker=list(symbol='circle', sizemode='diameter', line=list(width=0)), sizes = c(0, 10))
-#figFront <- figFront %>% layout(scene = list(xaxis=list(range=c(-3,3)), yaxis=list(range=c(-3,3)), zaxis=list(range=c(-3,3)), bgcolor="#FFFFFF00", camera=list(center=list(x=0, y=0, z=0), eye=list(x=1, y=0, z=0.2))))
-
-#orca(figFront, "front.svg")
-
-
-# ggsave('hidoi.pdf', device='pdf', width=11, height=11, units='in')
-# add_trace(BH, type="scatter3d", mode="markers", x = ~clumpX, y = ~clumpY, z = ~clumpZ, color = 'black', size=~radius,
-#    marker=list(symbol='circle', sizemode='diameter', line=list(width=0)), sizes = c(0, 10)) %>%
-#layout(xaxis = axisSet)
-
-#fig <- fig %>% layout(ClumpPos[1],  type="scatter3d", mode="markers", x = ~clumpX, y = ~clumpY, z = ~clumpZ, color='red', size=~radius, #marker=list(symbol='circle', sizemode='diameter', line=list(width=0)), sizes = c(0, 10))
-#fig <- layout(fig, xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE), yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
-#fig <- layout(fig, yaxis = list(scaleanchor = "x"))
-#fig <- layout( fig, shapes = list(
-#				list( type = 'circle',
-#						xref = 'x', x0=-0.1, x1=0.1,
-#						yref = 'y', y0=-0.1, y1=0.1,
-#						opacity = 0.7)))
-#
