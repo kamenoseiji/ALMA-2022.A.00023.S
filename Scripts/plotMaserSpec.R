@@ -108,18 +108,23 @@ maskRange <- c(1150, 1180)	# Velocity range for ozone contamination
 May12 <- read.table('NGC1052_SPW3.veloc.txt')
 Jul10 <- read.table('2022.A.00023.S.X109d26e_X12c34.veloc.txt', skip=9, header=FALSE)
 Jul24 <- read.table('2022.A.00023.S.X10a7a20_X65a8.veloc.txt', skip=9, header=FALSE)
+Jul18_2025 <- read.table('B7_Visit1.veloc.txt', skip=9, header=FALSE)
 names(May12) <- c('VLSR', 'Flux')
 names(Jul10) <- c('VLSR', 'Flux')
 names(Jul24) <- c('VLSR', 'Flux')
+names(Jul18_2025) <- c('VLSR', 'Flux')
 #
 May12 <- contamWeight(fillStep(May12), maskRange)
 Jul10 <- contamWeight(fillStep(Jul10), maskRange)
 Jul24 <- contamWeight(fillStep(Jul24), maskRange)
+Jul18_2025 <- contamWeight(fillStep(Jul18_2025), maskRange)
 #-------- Spectral noise
 May12$errFlux <- 3.3e-3
 Jul10$errFlux <- 2.3e-3
 Jul24$errFlux <- 2.0e-3
+Jul18_2025$errFlux <- 2.0e-3
 #-------- Component Model (Gaussian or Lorentzian)
+if(0){
 modelMay12 <- c('G', 'G')
 modelJul10 <- c('G', 'L', 'G', 'G', 'G', 'G', 'L')
 modelJul24 <- c('G', 'L', 'G', 'G', 'G', 'G', 'L')
@@ -127,7 +132,6 @@ modelJul24 <- c('G', 'L', 'G', 'G', 'G', 'G', 'L')
 ContFit <- lm(formula=Flux~VLSR, data=May12[((May12$VLSR < 1150) | (May12$VLSR > 1700)),])
 baseLine <- predict(ContFit, data.frame(VLSR=May12$VLSR))
 May12$Flux <- May12$Flux - baseLine
-May12$baseLine <- 0.0
 #-------- Integrated flux density
 lineRange <- c(1200, 1700)
 May12integ <- integFlux(May12, lineRange); May12meanVel <- weightedMeanVeloc(May12, lineRange)
@@ -157,21 +161,25 @@ RedJul10integ <- integFlux(RedJul10, lineRange); RedJul10meanVel <- weightedMean
 RedJul24integ <- integFlux(RedJul24, lineRange); RedJul24meanVel <- weightedMeanVeloc(RedJul24, lineRange)
 cat(sprintf('Jul10: Red = %f +- %f Jy km/s   /  mean = %f +- %f km/s\n', RedJul10integ[1], RedJul10integ[2], RedJul10meanVel[1], RedJul10meanVel[2]))
 cat(sprintf('Jul24: Red = %f +- %f Jy km/s   /  mean = %f +- %f km/s\n', RedJul24integ[1], RedJul24integ[2], RedJul24meanVel[1], RedJul24meanVel[2]))
-if(0){
+}
 #-------- Flux scaling
+May12$Flux <- May12$Flux - median(May12$Flux)
+May12$baseLine <- 0.0
 Jul10$baseLine <- 0.075
 Jul24$baseLine <- 0.1
+Jul18_2025$baseLine <- 0.175
 Jul10$Flux <- Jul10$Flux + Jul10$baseLine
 Jul24$Flux <- Jul24$Flux + Jul24$baseLine
+Jul18_2025$Flux <- Jul18_2025$Flux + Jul18_2025$baseLine
 #-------- Date category
 May12$Date <- rep('2022-05-12', nrow(May12))
 Jul10$Date <- rep('2023-07-10 (+ 0.075 Jy)', nrow(Jul10))
 Jul24$Date <- rep('2023-07-24 (+ 0.1 Jy)', nrow(Jul24))
+Jul18_2025$Date <- rep('2025-07-18 (+ 0.175 Jy)', nrow(Jul18_2025))
 #-------- Plot Maser profiles
-Maser <- rbind(May12, Jul10, Jul24)
+Maser <- rbind(May12, Jul10, Jul24, Jul18_2025)
 ggp <- ggplot(data=Maser, mapping=aes(x=VLSR, y=Flux)) + geom_vline(xintercept = 1492.0, linetype = 'dotted') + geom_rect(xmin=1150, xmax=1180, ymin=-0.01, ymax=0.15, fill='gray', alpha=0.4) + geom_step(aes(color=Date), direction='mid') + geom_rect(aes(xmin=lead, xmax=lag, ymin=baseLine, ymax=Flux, fill=Date), alpha=0.5) + xlim(600, 2350) + xlab('VLSR [km/s]') + ylab('Flux Density [Jy]')
 ggsave('NGC1052_Maser.pdf', device='pdf', width=11, height=8, units='in')
-}
 if(0){
 #-------- Velocity Drift
 velDF <- data.frame( date=as.Date(c('2022-05-12', '2023-07-10', '2023-07-24')),
